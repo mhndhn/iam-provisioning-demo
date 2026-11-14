@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Provisioning.Api/Provisioning.Api.csproj" />
+    <Project Path="src/Provisioning.Core/Provisioning.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Provisioning.Tests/Provisioning.Tests.csproj" />
+  </Folder>
+</Solution>
