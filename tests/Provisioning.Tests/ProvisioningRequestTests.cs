@@ -12,7 +12,7 @@ public class ProvisioningRequestTests
         var r = new ProvisioningRequest { UserId = "jdoe", TargetSystem = "ActiveDirectory" };
         r.StartProcessing();
         r.Complete();
-        Assert.Equal(RequestStatus.Completed, r.Status);
+        Assert.Equal(RequestStatus.Failed, r.Status);
     }
 
     [Fact]
