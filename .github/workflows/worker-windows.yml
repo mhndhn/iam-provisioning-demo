@@ -1,0 +1,61 @@
+name: Worker (Windows Service)
+on:
+  push:
+    branches: [main]
+    paths: ['src/Provisioning.Worker/**', 'src/Provisioning.Core/**', 'deploy/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  VERSION: 1.2.${{ github.run_number }}     # SemVer: 1.2.<build number>
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test -c Release
+      - name: Publish
+        run: dotnet publish src/Provisioning.Worker -c Release -r win-x64 --self-contained false -p:Version=${{ env.VERSION }} -o publish
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath "ProvisioningWorker-$env:VERSION.zip"
+      - name: Upload zip (stands in for Artifactory generic repo)
+        uses: actions/upload-artifact@v4
+        with:
+          name: provisioning-worker-${{ env.VERSION }}
+          path: |
+            ProvisioningWorker-${{ env.VERSION }}.zip
+            deploy/deploy.ps1
+
+  deploy-uat:
+    needs: build
+    runs-on: windows-latest            # in real life: [self-hosted, windows, uat]
+    environment: uat
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: provisioning-worker-${{ env.VERSION }}
+      - name: Deploy to UAT server
+        shell: pwsh
+        run: ./deploy/deploy.ps1 -ZipPath "ProvisioningWorker-$env:VERSION.zip" -Environment UAT
+
+  deploy-prod:
+    needs: deploy-uat
+    runs-on: windows-latest            # in real life: [self-hosted, windows, prod]
+    environment: prod                  # waits for approval
+    concurrency:
+      group: worker-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: provisioning-worker-${{ env.VERSION }}
+      - name: Deploy the SAME zip to PROD server
+        shell: pwsh
+        run: ./deploy/deploy.ps1 -ZipPath "ProvisioningWorker-$env:VERSION.zip" -Environment Production
