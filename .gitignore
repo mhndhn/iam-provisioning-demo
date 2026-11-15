@@ -481,5 +481,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-#Batch File Service
-Services/
+# Local install folder if deploy.ps1 runs with -InstallRoot inside the repo
+/Services/
