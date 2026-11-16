@@ -1,0 +1,36 @@
+name: Deploy
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  uat:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: uat
+    concurrency: deploy-uat
+    steps:
+      - name: "Deploy (simulated: run the container + smoke test)"
+        run: |
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/provisioning-api:main   # ,, = lowercase (GHCR requires it)
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker run -d -p 8080:8080 --name api $IMAGE
+          sleep 5
+          curl --fail http://localhost:8080/health
+          echo "UAT smoke test passed"
+
+  prod:
+    needs: uat
+    runs-on: ubuntu-latest
+    environment: prod               # pauses here until a reviewer approves
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false     # never cancel a running prod deploy
+    steps:
+      - run: echo "Deploying the same image to PROD (in real life:Nomad/AKS by digest)"
